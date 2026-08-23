@@ -27,7 +27,7 @@ OD=$(PREFIX)objdump
 
 TOOLCHAIN_PATH := $(shell command -v $(CC) 2>/dev/null)
 ifeq ($(TOOLCHAIN_PATH),)
-$(error Toolchain "$(CC)" not found — install with: brew install gcc-arm-embedded (macOS) or apt install gcc-arm-none-eabi (Linux))
+$(error Toolchain "$(CC)" not found — install with: brew install gcc-arm-embedded (macOS) or apt install gcc-arm-none-eabi libnewlib-arm-none-eabi (Linux))
 endif
 
 #######################################
