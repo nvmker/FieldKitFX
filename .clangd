@@ -1,0 +1,18 @@
+# clangd configuration for IDE diagnostics.
+# The authoritative build is the Makefile; these flags mirror its
+# include paths and device define so clangd doesn't produce false
+# "file not found" / "undeclared identifier" errors on host machines.
+CompileFlags:
+  Add:
+    - --target=arm-none-eabi
+    - -DUSE_HAL_DRIVER
+    - -DSTM32F303xC
+    - -Iinc
+    - -Isrc
+    - -Ihardware
+    - -Iengine
+    - -IUI
+    - -IdataUtils
+    - -IHAL_Driver/Inc
+    - -ICMSIS/Device/Include
+    - -ICMSIS/Include

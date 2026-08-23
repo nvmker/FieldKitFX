@@ -24,8 +24,9 @@ toolchain.
 
 - `CMSIS/` — CMSIS device + core headers and the GCC startup file, taken from
   ST's [STM32CubeF3](https://github.com/STMicroelectronics/STM32CubeF3)
-  (tag `v1.10.0`, Apache-2.0). These were referenced by the source but missing
-  from the release.
+  (tag `v1.10.0`, BSD-3-Clause; see `CMSIS/PROVENANCE.md` for the exact
+  provenance and SHA256 manifest). These were referenced by the source but
+  missing from the release.
 - `STM32F303VCTx_FLASH.ld` — standard ST-style linker script for the
   STM32F303xC flash/RAM layout (recreated; the original AC6 script was not
   published).

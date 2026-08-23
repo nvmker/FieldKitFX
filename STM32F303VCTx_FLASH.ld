@@ -1,4 +1,5 @@
 /*
+ * SPDX-License-Identifier: GPL-3.0-or-later
  * Linker script for KOMA Elektronik Field Kit FX
  * Target MCU: STM32F303VCT6 (LQFP100, 256KB FLASH, 40KB SRAM + 8KB CCM)
  *

@@ -1,4 +1,5 @@
-# shellcheck shell=sh disable=SC2034,SC2276,SC2283,SC2037,SC2068
+# SPDX-License-Identifier: GPL-3.0-or-later
+# shellcheck shell=sh disable=SC2034,SC2276,SC2283,SC2037,SC2068,SC1073,SC1065,SC1064,SC1072
 ###############################################################################
 # KOMA Elektronik Field Kit FX — GNU Arm Embedded GCC Makefile
 #
@@ -24,6 +25,11 @@ CP=$(PREFIX)objcopy
 SZ=$(PREFIX)size
 OD=$(PREFIX)objdump
 
+TOOLCHAIN_PATH := $(shell command -v $(CC) 2>/dev/null)
+ifeq ($(TOOLCHAIN_PATH),)
+$(error Toolchain "$(CC)" not found — install with: brew install gcc-arm-embedded (macOS) or apt install gcc-arm-none-eabi (Linux))
+endif
+
 #######################################
 # MCU / device
 #######################################
@@ -35,6 +41,12 @@ DEFS=$(CPU) -DUSE_HAL_DRIVER -DSTM32F303xC
 # Optimization (release default; override with OPT=-O0 ...)
 #######################################
 OPT?=-O2
+
+#######################################
+# Extra flags (injectable from env or command line)
+#######################################
+EXTRA_CFLAGS?=
+EXTRA_LDFLAGS?=
 
 #######################################
 # Include paths / sources
@@ -70,14 +82,14 @@ LDSCRIPT=STM32F303VCTx_FLASH.ld
 # looper.h, UI.h); GCC >= 10 defaults to -fno-common which would fail at link.
 CFLAGS=$(DEFS) $(OPT) -g3 -std=gnu11 \
        -ffunction-sections -fdata-sections -fcommon \
-       -Wall -fstack-usage
+       -Wall -fstack-usage -MMD -MP $(EXTRA_CFLAGS)
 
 ASFLAGS=$(CPU) $(OPT) -g3 -x assembler-with-cpp
 
 LDFLAGS=$(CPU) -specs=nano.specs -T$(LDSCRIPT) \
        -Wl,-Map=$(BUILD)/$(TARGET).map,--cref \
        -Wl,--gc-sections -Wl,--no-warn-rwx-segments \
-       -lm
+       -lm $(EXTRA_LDFLAGS)
 
 #######################################
 # Objects
@@ -87,12 +99,16 @@ vpath %.c $(sort $(dir $(SOURCES)))
 OBJECTS+=$(addprefix $(BUILD)/,$(notdir $(ASM_SOURCES:.s=.o)))
 vpath %.s $(sort $(dir $(ASM_SOURCES)))
 
+# Header dependency tracking (-MMD -MP above)
+DEPS=$(OBJECTS:.o=.d)
+-include $(DEPS)
+
 #######################################
 # Rules
 #######################################
 .PHONY: all size clean flash-dfu flash-stlink objdump
 
-all: $(BUILD)/$(TARGET).elf $(BUILD)/$(TARGET).bin $(BUILD)/$(TARGET).hex $(BUILD)/$(TARGET).lst size
+all: $(BUILD)/$(TARGET).elf $(BUILD)/$(TARGET).bin $(BUILD)/$(TARGET).hex $(BUILD)/$(TARGET).lst
 
 $(BUILD)/%.o: %.c Makefile | $(BUILD)
 	$(CC) -c $(CFLAGS) $(INCLUDES) $< -o $@
@@ -120,16 +136,18 @@ size:
 	$(SZ) $(BUILD)/$(TARGET).elf
 
 objdump:
-	$(OD) -d $(BUILD)/$(TARGET).elf | less
+	$(OD) -d $(BUILD)/$(TARGET).elf
 
 # USB DFU bootloader: hold LOOP button while powering the unit on, then run:
 #   make flash-dfu
 flash-dfu: $(BUILD)/$(TARGET).bin
+	@command -v dfu-util >/dev/null || { echo 'dfu-util not found — install with: brew install dfu-util'; exit 1; }
 	dfu-util -a 0 -s 0x08000000:leave -D $(BUILD)/$(TARGET).bin
 
 # ST-Link SWD (no bootloader mode needed):
 #   make flash-stlink
 flash-stlink: $(BUILD)/$(TARGET).bin
+	@command -v st-flash >/dev/null || { echo 'st-flash not found — install with: brew install stlink'; exit 1; }
 	st-flash write $(BUILD)/$(TARGET).bin 0x08000000
 
 clean:
