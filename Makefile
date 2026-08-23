@@ -24,11 +24,7 @@ AS=$(PREFIX)gcc -x assembler-with-cpp
 CP=$(PREFIX)objcopy
 SZ=$(PREFIX)size
 OD=$(PREFIX)objdump
-
-TOOLCHAIN_PATH := $(shell command -v $(CC) 2>/dev/null)
-ifeq ($(TOOLCHAIN_PATH),)
-$(error Toolchain "$(CC)" not found — install with: brew install gcc-arm-embedded (macOS) or apt install gcc-arm-none-eabi libnewlib-arm-none-eabi (Linux))
-endif
+TOOLCHAIN_TOOLS=$(CC) $(CP) $(SZ) $(OD)
 
 #######################################
 # MCU / device
@@ -94,10 +90,10 @@ LDFLAGS=$(CPU) -specs=nano.specs -T$(LDSCRIPT) \
 #######################################
 # Objects
 #######################################
-OBJECTS=$(addprefix $(BUILD)/,$(notdir $(SOURCES:.c=.o)))
-vpath %.c $(sort $(dir $(SOURCES)))
-OBJECTS+=$(addprefix $(BUILD)/,$(notdir $(ASM_SOURCES:.s=.o)))
-vpath %.s $(sort $(dir $(ASM_SOURCES)))
+# Preserve source-relative paths so equal basenames in different directories
+# always produce distinct object and dependency files.
+OBJECTS=$(patsubst %.c,$(BUILD)/%.o,$(SOURCES))
+OBJECTS+=$(patsubst %.s,$(BUILD)/%.o,$(ASM_SOURCES))
 
 # Header dependency tracking (-MMD -MP above)
 DEPS=$(OBJECTS:.o=.d)
@@ -106,17 +102,30 @@ DEPS=$(OBJECTS:.o=.d)
 #######################################
 # Rules
 #######################################
-.PHONY: all size clean flash-dfu flash-stlink objdump
+.PHONY: all check-toolchain size clean flash-dfu flash-stlink objdump
 
 all: $(BUILD)/$(TARGET).elf $(BUILD)/$(TARGET).bin $(BUILD)/$(TARGET).hex $(BUILD)/$(TARGET).lst
 
-$(BUILD)/%.o: %.c Makefile | $(BUILD)
+check-toolchain:
+	@missing=""; \
+	for tool in $(TOOLCHAIN_TOOLS); do \
+		command -v "$$tool" >/dev/null 2>&1 || missing="$$missing $$tool"; \
+	done; \
+	test -z "$$missing" || { \
+		echo "Required Arm toolchain commands not found:$$missing"; \
+		echo "Install with: brew install gcc-arm-embedded (macOS) or apt install gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi (Linux)"; \
+		exit 1; \
+	}
+
+$(BUILD)/%.o: %.c Makefile | check-toolchain $(BUILD)
+	@mkdir -p $(dir $@)
 	$(CC) -c $(CFLAGS) $(INCLUDES) $< -o $@
 
-$(BUILD)/%.o: %.s Makefile | $(BUILD)
+$(BUILD)/%.o: %.s Makefile | check-toolchain $(BUILD)
+	@mkdir -p $(dir $@)
 	$(AS) -c $(ASFLAGS) $< -o $@
 
-$(BUILD)/$(TARGET).elf: $(OBJECTS) $(LDSCRIPT) Makefile
+$(BUILD)/$(TARGET).elf: $(OBJECTS) $(LDSCRIPT) Makefile | check-toolchain $(BUILD)
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
 	$(SZ) $@
 
@@ -132,10 +141,10 @@ $(BUILD)/$(TARGET).lst: $(BUILD)/$(TARGET).elf
 $(BUILD):
 	mkdir -p $@
 
-size:
+size: $(BUILD)/$(TARGET).elf
 	$(SZ) $(BUILD)/$(TARGET).elf
 
-objdump:
+objdump: $(BUILD)/$(TARGET).elf
 	$(OD) -d $(BUILD)/$(TARGET).elf
 
 # USB DFU bootloader: hold LOOP button while powering the unit on, then run:

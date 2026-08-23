@@ -1,18 +1,42 @@
 # clangd configuration for IDE diagnostics.
-# The authoritative build is the Makefile; these flags mirror its
-# include paths and device define so clangd doesn't produce false
-# "file not found" / "undeclared identifier" errors on host machines.
+# The authoritative build is the Makefile. Include paths are relative to each
+# source file's fallback compilation directory when no compile database exists.
 CompileFlags:
+  Compiler: arm-none-eabi-gcc
   Add:
-    - --target=arm-none-eabi
+    - -mcpu=cortex-m4
+    - -mthumb
+    - -mfpu=fpv4-sp-d16
+    - -mfloat-abi=hard
     - -DUSE_HAL_DRIVER
     - -DSTM32F303xC
-    - -Iinc
-    - -Isrc
-    - -Ihardware
-    - -Iengine
-    - -IUI
-    - -IdataUtils
-    - -IHAL_Driver/Inc
-    - -ICMSIS/Device/Include
-    - -ICMSIS/Include
+
+---
+If:
+  PathMatch: ^(inc|src|hardware|engine|UI|dataUtils)/.*
+CompileFlags:
+  Add:
+    - -I../inc
+    - -I../src
+    - -I../hardware
+    - -I../engine
+    - -I../UI
+    - -I../dataUtils
+    - -I../HAL_Driver/Inc
+    - -I../CMSIS/Device/Include
+    - -I../CMSIS/Include
+
+---
+If:
+  PathMatch: ^HAL_Driver/(Inc|Src)/.*
+CompileFlags:
+  Add:
+    - -I../../inc
+    - -I../../src
+    - -I../../hardware
+    - -I../../engine
+    - -I../../UI
+    - -I../../dataUtils
+    - -I../../HAL_Driver/Inc
+    - -I../../CMSIS/Device/Include
+    - -I../../CMSIS/Include

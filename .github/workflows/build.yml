@@ -1,16 +1,30 @@
+---
 name: build
 
-on:
+"on":
   push:
     branches: [master]
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        # actions/checkout v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Verify vendored CMSIS
+        run: |
+          sed -nE 's/^    ([[:xdigit:]]{64}  CMSIS\/.*)$/\1/p' \
+            CMSIS/PROVENANCE.md > /tmp/cmsis.sha256
+          test "$(wc -l < /tmp/cmsis.sha256)" -eq 13
+          sha256sum --check /tmp/cmsis.sha256
 
       - name: Install Arm toolchain
         run: |
@@ -21,6 +35,9 @@ jobs:
 
       - name: Build firmware
         run: make
+
+      - name: Verify firmware layout
+        run: python3 tools/verify_firmware.py build/FieldKitFX.elf
 
       - name: Check artifacts
         run: |

@@ -10,15 +10,15 @@ toolchain.
 
 ## Target hardware
 
-| Item          | Value |
-|---------------|-------|
-| MCU           | STM32F303VCT6 (LQFP100, Cortex-M4F) |
-| Flash         | 256 KB @ `0x08000000` |
-| SRAM          | 40 KB @ `0x20000000` + 8 KB CCM @ `0x10000000` |
+| Item          | Value                                                                  |
+| ------------- | ---------------------------------------------------------------------- |
+| MCU           | STM32F303VCT6 (LQFP100, Cortex-M4F)                                    |
+| Flash         | 256 KB @ `0x08000000`                                                  |
+| SRAM          | 40 KB @ `0x20000000` + 8 KB CCM @ `0x10000000`                         |
 | Audio codec   | WM8731, I2S slave mode, codec is clock master (SPI2 full-duplex + DMA) |
-| Looper memory | 23LC1024 SPI SRAM |
-| LEDs          | PCA9956B I2C LED driver |
-| HAL version   | ST STM32F3xx HAL V1.4.0 (16-Dec-2016) |
+| Looper memory | 23LC1024 SPI SRAM                                                      |
+| LEDs          | PCA9956B I2C LED driver                                                |
+| HAL version   | ST STM32F3xx HAL V1.4.0 (16-Dec-2016)                                  |
 
 ## What was added on top of the original release
 
@@ -46,6 +46,18 @@ measures are applied at build time (no source edits):
     brew install gcc-arm-embedded stlink dfu-util
 
 (any recent `arm-none-eabi-gcc` works; the build was verified with 15.3)
+
+## IDE diagnostics (clangd)
+
+The repository's `.clangd` mirrors the target CPU, floating-point ABI, device
+macros, and include paths from the Makefile. Because clangd requires an
+explicit allowlist before querying a non-Clang compiler for its system header
+paths, start or configure clangd with:
+
+    clangd --query-driver="$(command -v arm-none-eabi-gcc)"
+
+This lets clangd discover the installed Arm toolchain's newlib headers instead
+of reporting false errors for standard headers such as `stdio.h`.
 
 ## Build
 
