@@ -1,0 +1,6 @@
+# build artifacts
+build/
+*.su
+
+# editors
+.vscode/
